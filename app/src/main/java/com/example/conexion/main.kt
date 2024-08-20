@@ -39,13 +39,30 @@ class main :AppWidgetProvider(){
         Log.d("???", "onUpdate")
 
         //aqui quite lo de blog 1
+        // Registrar el receptor para el Broadcast local
+        if (context != null) {
+            LocalBroadcastManager.getInstance(context).registerReceiver(
+                UpdateWidgetReceiver(),
+
+                IntentFilter("com.example.conexion.UPDATE_WIDGET")
+            )
+
+            Log.d("onUpdate", "GetButtonReceiver registrado correctamente")
+        }
 
         if (context != null && appWidgetManager != null && appWidgetIds != null) {
+
+            val sharedPreferences = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+            val lastMessage = sharedPreferences.getString("lastMessage", "Esperando mensaje...")
+
+
             for (appWidgetId in appWidgetIds) {
                 // Crea un RemoteViews que apunte al layout del widget
                 val views = RemoteViews(context.packageName, R.layout.ventana_princial)
+                // Establecer el último mensaje en el TextView del widget
+                views.setTextViewText(R.id.widget_text_view, lastMessage)
 
-                // Configura un Intent que abrirá LogginActivity
+                // Configura un Intent que abrirá LogginActiv   ity
                 val intent = Intent(context, Loggin::class.java)
                 val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
 
@@ -68,32 +85,48 @@ class main :AppWidgetProvider(){
 
     }
 
-    class UpdateWidgetReceiver : BroadcastReceiver(){
+    class UpdateWidgetReceiver : BroadcastReceiver() {
+        private var lastMessage: String? = null
+        private var lastToken: String? = null
+
         override fun onReceive(context: Context?, intent: Intent?) {
             Log.d("UpdateWidgetReceiver", "Broadcast recibido main")
-            if(context != null && intent != null){
+
+            if (context != null && intent != null) {
                 val message = intent.getStringExtra("response_message")
                 val token = intent.getStringExtra("auth_token")
+
                 Log.d("broadvast main", message ?: "No message received")
 
-
-                if (token != null) {
+                // Verificar y almacenar el token si es nuevo
+                if (token != null && token != lastToken) {
+                    lastToken = token
                     Log.d("UpdateWidgetReceiver", "Token recibido: $token")
                     val sharedPreferences = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
                     sharedPreferences.edit().putString("authToken", token).apply()
-
+                    Log.d("UpdateWidgetReceiver", "Token guardado: $token")
+                } else if (token == null) {
+                    Log.d("UpdateWidgetReceiver", "Token es nulo o no ha cambiado, no se actualiza.")
                 }
 
-                if (message != null) {
+                // Verificar y actualizar el mensaje si es nuevo
+                if (message != null && message != lastMessage) {
+                    lastMessage = message
+                    val sharedPreferences = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+                    sharedPreferences.edit().putString("lastMessage", message).apply()
+
                     val appWidgetManager = AppWidgetManager.getInstance(context)
                     val views = RemoteViews(context.packageName, R.layout.ventana_princial)
                     views.setTextViewText(R.id.widget_text_view, message)
 
-                    // Actualizar todos los widgets
                     val appWidgetIds = appWidgetManager.getAppWidgetIds(
                         ComponentName(context, main::class.java)
                     )
+
                     appWidgetManager.updateAppWidget(appWidgetIds, views)
+                    Log.d("UpdateWidgetReceiver", "Widget actualizado con el mensaje: $message")
+                } else if (message == null) {
+                    Log.d("UpdateWidgetReceiver", "Mensaje es nulo o no ha cambiado, no se actualiza.")
                 }
             }
         }
@@ -111,7 +144,7 @@ class main :AppWidgetProvider(){
                 // Obtener authToken de SharedPreferences
                 val sharedPreferences = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
                 val authToken = sharedPreferences.getString("authToken", null)
-
+                Log.d("GetButtonReceiver", "Token recuperado: $authToken")
                 if (authToken != null) {
                     Log.d("GetButtonReceiver", "Token usado: $authToken")
                     val call = apiService.obtenerValor("Bearer $authToken")
@@ -131,6 +164,8 @@ class main :AppWidgetProvider(){
                                 val intentBroadcast = Intent("com.example.conexion.UPDATE_WIDGET")
                                 intentBroadcast.putExtra("response_message", valor)
                                 LocalBroadcastManager.getInstance(context).sendBroadcast(intentBroadcast)
+                                //context.sendBroadcast(intentBroadcast)
+                                Log.d("GetButtonReceiver", "Intent enviado a UpdateWidgetReceiver con mensaje: $valor")
                             } else {
                                 Toast.makeText(context, "Error al obtener el valor", Toast.LENGTH_SHORT).show()
                                 Log.d("GetButtonReceiver", "Error en la respuesta del servidor")
