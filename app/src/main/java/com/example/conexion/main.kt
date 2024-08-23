@@ -23,11 +23,33 @@ import com.instana.android.Instana
 class main :AppWidgetProvider(){
     private var authToken: String? = null
     private lateinit var apiService: ApiService
+    private var counter: Int = 0
 
     override fun onEnabled(context: Context?) {
         super.onEnabled(context)
         Log.d("???", "onEnable")
 
+    }
+    override fun onReceive(context: Context?, intent: Intent?) {
+        super.onReceive(context, intent)
+
+        val action = intent?.action ?: ""
+
+        if (context != null && action == "increment_counter") {
+            val prefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
+            val newCount = prefs.getInt("counter", 0) + 1
+            prefs.edit().putInt("counter", newCount).apply()
+
+            // Enviar datos a Instana
+            Instana.reportEvent(
+                CustomEvent(eventName = "CounterIncrement")
+            )
+
+            Log.d("main", "Contador incrementado: $newCount y enviado a Instana")
+
+            // Actualizar todos los widgets con el nuevo contador
+            updateCounterView(context, newCount)
+        }
     }
 
     override fun onUpdate(
@@ -54,13 +76,15 @@ class main :AppWidgetProvider(){
 
             val sharedPreferences = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
             val lastMessage = sharedPreferences.getString("lastMessage", "Esperando mensaje...")
-
+            counter = sharedPreferences.getInt("counter", 0)
 
             for (appWidgetId in appWidgetIds) {
                 // Crea un RemoteViews que apunte al layout del widget
                 val views = RemoteViews(context.packageName, R.layout.ventana_princial)
                 // Establecer el último mensaje en el TextView del widget
                 views.setTextViewText(R.id.widget_text_view, lastMessage)
+                //Contador
+                views.setTextViewText(R.id.counter_text_view, "Contador: $counter")
 
                 // Configura un Intent que abrirá LogginActiv   ity
                 val intent = Intent(context, Loggin::class.java)
@@ -74,6 +98,13 @@ class main :AppWidgetProvider(){
                 getIntent.action = "com.example.conexion.GET_BUTTON_CLICKED"
                 val getPendingIntent = PendingIntent.getBroadcast(context, 0, getIntent, PendingIntent.FLAG_IMMUTABLE)
                 views.setOnClickPendingIntent(R.id.button_get, getPendingIntent)
+
+
+
+                val incrementIntent = Intent(context, main::class.java)
+                incrementIntent.action = "increment_counter"
+                val incrementPendingIntent = PendingIntent.getBroadcast(context, 0, incrementIntent, PendingIntent.FLAG_IMMUTABLE)
+                views.setOnClickPendingIntent(R.id.button_increment, incrementPendingIntent)
 
 
                 // Notifica al AppWidgetManager para actualizar el widget
@@ -184,6 +215,32 @@ class main :AppWidgetProvider(){
             }
         }
     }
+    class IncrementButtonReceiver : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            Log.d("IncrementButtonReceiver", "onReceive called")
+
+            if (context != null) {
+                val sharedPreferences = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE)
+                var counter = sharedPreferences.getInt("counter", 0)
+                counter++
+
+                Log.d("IncrementButtonReceiver", "Counter incremented to: $counter")
+
+                sharedPreferences.edit().putInt("counter", counter).apply()
+
+                val appWidgetManager = AppWidgetManager.getInstance(context)
+                val views = RemoteViews(context.packageName, R.layout.ventana_princial)
+                views.setTextViewText(R.id.counter_text_view, "Contador: $counter")
+
+                val appWidgetIds = appWidgetManager.getAppWidgetIds(
+                    ComponentName(context, main::class.java)
+                )
+
+                appWidgetManager.updateAppWidget(appWidgetIds, views)
+                Log.d("IncrementButtonReceiver", "Widget updated with counter: $counter")
+            }
+        }
+    }
 
     override fun onDeleted(context: Context?, appWidgetIds: IntArray?) {
         super.onDeleted(context, appWidgetIds)
@@ -200,4 +257,18 @@ class main :AppWidgetProvider(){
         }
 
     }
+    private fun updateCounterView(context: Context, newCount: Int) {
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val views = RemoteViews(context.packageName, R.layout.ventana_princial)
+        views.setTextViewText(R.id.counter_text_view, "Contador: $newCount")
+
+        val appWidgetIds = appWidgetManager.getAppWidgetIds(
+            ComponentName(context, main::class.java)
+        )
+
+        appWidgetManager.updateAppWidget(appWidgetIds, views)
+    }
+
+
+
 }

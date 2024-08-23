@@ -5,14 +5,21 @@ import android.util.Log
 import com.instana.android.CustomEvent
 import com.instana.android.Instana
 import com.instana.android.core.InstanaConfig
+import com.instana.android.core.SuspendReportingType
 
 class MyApp : Application() {
     override fun onCreate() {
         super.onCreate()
 
         val config = InstanaConfig(
-            reportingURL = "url_instana",
-            key = "key_instana"
+            reportingURL = "URL_",
+            key = "Key",
+            //suspendReporting = SuspendReportingType.LOW_BATTERY,
+            //initialBeaconDelayMs = 5000,
+            //slowSendIntervalMillis = 10000,
+            collectionEnabled = false
+            //usiRefreshTimeIntervalInHrs = 24,
+            //autoCaptureScreenNames = false
         )
         Instana.setup(this, config)
 
