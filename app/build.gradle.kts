@@ -67,6 +67,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.activity)
+    implementation(libs.androidx.work.runtime.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -81,4 +82,6 @@ dependencies {
 
     // Instana dependency
     implementation("com.instana:android-agent-runtime:6.0.19")
+
+    implementation("androidx.work:work-runtime-ktx:2.7.1")
 }

@@ -1,47 +1,36 @@
 package com.example.conexion
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
+import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.conexion.ui.theme.ConexionTheme
+import android.provider.Settings
+import android.util.Log
+import android.widget.Button
+import androidx.appcompat.app.AppCompatActivity
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            ConexionTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+        setContentView(R.layout.activity_main)
+
+        val button: Button = findViewById(R.id.instal_widget_button)
+
+        button.setOnClickListener {
+            val appWidgetManager = AppWidgetManager.getInstance(this)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(ComponentName(this, main::class.java))
+
+            if (appWidgetIds.isNotEmpty()) {
+                val appWidgetId = appWidgetIds[0]  // Usando el primer ID de la lista
+
+                val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_PICK)
+                intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                startActivityForResult(intent, 1)
+            } else {
+                // Manejar el caso donde no hay widgets disponibles
+                Log.d("MainActivity", "No hay IDs de AppWidget disponibles.")
             }
         }
-    }
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    ConexionTheme {
-        Greeting("Android")
     }
 }

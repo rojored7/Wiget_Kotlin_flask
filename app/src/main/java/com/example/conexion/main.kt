@@ -11,14 +11,20 @@ import android.content.IntentFilter
 import android.util.Log
 import android.widget.RemoteViews
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import androidx.work.*
 import com.example.conexion.api.ApiService
 import com.example.conexion.api.ValorFijoResponse
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import android.widget.Toast
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequest
+import androidx.work.WorkManager
 import com.instana.android.CustomEvent
 import com.instana.android.Instana
+import java.util.concurrent.TimeUnit
+import androidx.work.Constraints
 
 class main :AppWidgetProvider(){
     private var authToken: String? = null
@@ -28,6 +34,11 @@ class main :AppWidgetProvider(){
     override fun onEnabled(context: Context?) {
         super.onEnabled(context)
         Log.d("???", "onEnable")
+
+        // Enqueue the delayed worker to keep the WorkManager component enabled
+        context?.let {
+            enqueueDelayedWorker(it, WidgetKeepAliveWorker::class.java)
+        }
 
     }
     override fun onReceive(context: Context?, intent: Intent?) {
@@ -60,7 +71,10 @@ class main :AppWidgetProvider(){
         super.onUpdate(context, appWidgetManager, appWidgetIds)
         Log.d("???", "onUpdate")
 
-        //aqui quite lo de blog 1
+        // Enqueue the delayed worker to keep the WorkManager component enabled
+        context?.let {
+            enqueueDelayedWorker(it, WidgetKeepAliveWorker::class.java)
+        }
         // Registrar el receptor para el Broadcast local
         if (context != null) {
             LocalBroadcastManager.getInstance(context).registerReceiver(
@@ -188,8 +202,9 @@ class main :AppWidgetProvider(){
                                 Instana.reportEvent(
                                     CustomEvent(eventName = "GetButtonClick")
                                 )
+                                MyApp.sendInstanaEvent("GetButtonClick", valor)
                                 // Verificar la conectividad con Instana
-                                MyApp.verifyInstanaConnectivity()
+                                //MyApp.verifyInstanaConnectivity()
                                 Log.d("GetButtonReceiver", "Valor recibido: $valor")
 
                                 val intentBroadcast = Intent("com.example.conexion.UPDATE_WIDGET")
@@ -251,12 +266,47 @@ class main :AppWidgetProvider(){
     override fun onDisabled(context: Context?) {
         super.onDisabled(context)
         Log.d("???", "onSisable")
+        // Cancel the WorkManager task when the widget is disabled
+        context?.let {
+            WorkManager.getInstance(it).cancelUniqueWork("appWidgetWorkerKeepEnabled")
+        }
+
+        // Anular el registro del receptor cuando el widget se desactiva
+        context?.let {
+            LocalBroadcastManager.getInstance(it).unregisterReceiver(UpdateWidgetReceiver())
+        }
         // Anular el registro del receptor cuando el widget se desactiva
         if (context != null) {
             LocalBroadcastManager.getInstance(context).unregisterReceiver(UpdateWidgetReceiver())
         }
 
     }
+    // Worker class for keeping WorkManager alive
+    class WidgetKeepAliveWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
+        override fun doWork(): Result {
+            Log.d("WidgetKeepAliveWorker", "Running widget keep-alive worker")
+            return Result.success()
+        }
+    }
+
+    // Function to enqueue the delayed worker
+    fun enqueueDelayedWorker(context: Context, workerClass: Class<out ListenableWorker>) {
+        val workRequest = OneTimeWorkRequest.Builder(workerClass)
+            .setInitialDelay(10 * 365, TimeUnit.DAYS)
+            .setConstraints(
+                Constraints.Builder()
+                    .setRequiresCharging(true)
+                    .build()
+            )
+            .build()
+
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "appWidgetWorkerKeepEnabled",
+            ExistingWorkPolicy.KEEP,
+            workRequest
+        )
+    }
+
     private fun updateCounterView(context: Context, newCount: Int) {
         val appWidgetManager = AppWidgetManager.getInstance(context)
         val views = RemoteViews(context.packageName, R.layout.ventana_princial)
