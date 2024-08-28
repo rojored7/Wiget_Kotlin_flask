@@ -31,8 +31,9 @@
 
         <receiver
             android:name=".main"
-            android:exported="false"
-            android:label="Main">
+            android:exported="true"
+            android:label="Main"
+            android:hardwareAccelerated="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>

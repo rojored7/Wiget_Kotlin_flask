@@ -14,8 +14,8 @@ class MyApp : Application() {
         super.onCreate()
 
         val config = InstanaConfig(
-            reportingURL = "url",
-            key = "key",
+            reportingURL = "https://eum-red-saas.instana.io/mobile",
+            key = "41HBybUnT_C4WE9cCOnKGA",
             enableCrashReporting = true,
             //initialSetupTimeoutMs
             //nterval = 60
